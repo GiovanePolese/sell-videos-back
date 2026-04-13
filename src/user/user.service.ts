@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Users } from './entities/user.entity';
+import { CreateUserInput } from './dto/create-user.input';
 
 @Injectable()
 export class UserService {
@@ -10,9 +11,17 @@ export class UserService {
     private readonly userRepository: Repository<Users>,
   ) {}
 
-  // Criar um usuário
-  async createUser(name: string): Promise<Users> {
-    const user = this.userRepository.create({ name });
+  async createUser(payload: CreateUserInput | string): Promise<Users> {
+    const userData: Partial<Users> =
+      typeof payload === 'string'
+        ? { name: payload, password: '', dica_senha: '' }
+        : {
+            name: payload.name,
+            password: payload.password,
+            dica_senha: payload.dicaSenha,
+          };
+
+    const user = this.userRepository.create(userData);
     return this.userRepository.save(user);
   }
 
