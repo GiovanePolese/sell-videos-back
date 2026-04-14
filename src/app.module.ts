@@ -27,6 +27,7 @@ import { join } from 'path';
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       path: '/graphql',
+      context: ({ req, res }) => ({ req, res }),
       playground: true,
       introspection: true,
       sortSchema: true,

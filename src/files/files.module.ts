@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { FilesController } from './files.controller';
 import { FilesService } from './files.service';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Files as FilesEntity } from './entities/files.entity';
+import { GraphqlThrottlerGuard } from '../common/guards/graphql-throttler.guard';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { Files as FilesEntity } from './entities/files.entity';
     FilesService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: GraphqlThrottlerGuard,
     },
   ],
 })
