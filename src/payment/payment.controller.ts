@@ -1,17 +1,20 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { PaymentService } from './payment.service';
+import { CreatePixChargeDto } from './dto/create-pix-charge.dto';
+import { PixWebhookDto } from './dto/pix-webhook.dto';
 
 @Controller('payment')
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
-  @Get('token')
-  async getToken() {
-    return await this.paymentService.getToken();
+  @Post('pix')
+  createPixCharge(@Body() payload: CreatePixChargeDto) {
+    return this.paymentService.createPixCharge(payload);
   }
 
-  @Post('charge')
-  async charge(@Body('access_token') access_token: string) {
-    return await this.paymentService.charge(access_token);
+  @Post('webhook/efi')
+  @HttpCode(200)
+  handleEfiWebhook(@Body() payload: PixWebhookDto) {
+    return this.paymentService.processWebhook(payload);
   }
 }

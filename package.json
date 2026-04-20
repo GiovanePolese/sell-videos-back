@@ -49,7 +49,8 @@
     "uuid": "^11.0.5",
     "@nestjs/apollo": "^12.2.2",
     "@nestjs/graphql": "^12.2.2",
-    "graphql": "^16.11.0"
+    "graphql": "^16.11.0",
+    "efi-node-sdk": "^1.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
