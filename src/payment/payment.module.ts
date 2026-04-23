@@ -1,18 +1,13 @@
 import { Module } from '@nestjs/common';
-import { PaymentService } from './payment.service';
-import { HttpModule } from '@nestjs/axios';
+import { ConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { PaymentController } from './payment.controller';
+import { PaymentService } from './payment.service';
+import { Order } from '../orders/entities/order.entity';
 
 @Module({
-  imports: [
-    HttpModule.register({
-      httpsAgent: new (require('https').Agent)({
-        pfx: require('fs').readFileSync('certificates/homologacao-679036-homolog.p12'),
-        passphrase: '',
-      }),
-    }),
-  ],
+  imports: [ConfigModule, TypeOrmModule.forFeature([Order])],
   controllers: [PaymentController],
-  providers: [PaymentService]
+  providers: [PaymentService],
 })
 export class PaymentModule {}

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Users } from './user/entities/user.entity';
 import { Files as FilesEntity } from './files/entities/files.entity';
+import { Order } from './orders/entities/order.entity';
 import { UserModule } from './user/user.module';
 import { FilesModule } from './files/files.module';
 import { ConfigModule } from '@nestjs/config';
@@ -20,7 +21,7 @@ import { join } from 'path';
       username: 'root',
       password: 'myadmin',
       database: 'sellvideos',
-      entities: [Users, FilesEntity],
+      entities: [Users, FilesEntity, Order],
       synchronize: true,
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
@@ -32,7 +33,7 @@ import { join } from 'path';
       introspection: true,
       sortSchema: true,
     }),
-    TypeOrmModule.forFeature([Users, FilesEntity]),
+    TypeOrmModule.forFeature([Users, FilesEntity, Order]),
     ConfigModule.forRoot({
       isGlobal: true,
     }),

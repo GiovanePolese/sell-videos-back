@@ -1,116 +1,162 @@
-import { Injectable } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
+import { CreatePixChargeDto } from './dto/create-pix-charge.dto';
+import { CreatePaymentResponseDto } from './dto/create-payment-response.dto';
+import { PixWebhookDto } from './dto/pix-webhook.dto';
+import { Order } from '../orders/entities/order.entity';
+import * as path from 'path';
+
+interface EfiSdkClient {
+  pixCreateImmediateCharge(params: { txid: string }, body: Record<string, unknown>): Promise<any>;
+  pixGenerateQRCode(params: { id: number | string }): Promise<any>;
+}
 
 @Injectable()
 export class PaymentService {
-  private readonly baseUrl: string;
-  private readonly username: string;
-  private readonly password: string;
+  private efiClient: EfiSdkClient | null = null;
 
   constructor(
-    private readonly httpService: HttpService,
     private readonly configService: ConfigService,
-  ) {
-    this.baseUrl = 'https://pix-h.api.efipay.com.br';
-    this.username = this.configService.getOrThrow('EFI_ACCESS_KEY');
-    this.password = this.configService.getOrThrow('EFI_SECRET_KEY');
-  }
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>,
+  ) {}
 
-  // Método para criar headers básicos (Basic Auth)
-  private getBasicAuthHeaders(): Record<string, string> {
-    return {
-      Authorization: 'Basic ' + Buffer.from(`${this.username}:${this.password}`).toString('base64'),
-      'Content-Type': 'application/json',
-    };
-  }
-
-  // Método para criar headers Bearer Token
-  private getBearerHeaders(access_token: string): Record<string, string> {
-    return {
-      Authorization: `Bearer ${access_token}`,
-      'Content-Type': 'application/json',
-    };
-  }
-
-  async getToken(): Promise<any> {
-    const url = `${this.baseUrl}/oauth/token`;
-    const headers = this.getBasicAuthHeaders();
-
-    const body = {
-      grant_type: 'client_credentials',
-    };
-
-    return this.makePostRequest(url, body, headers, 'Erro ao obter o token');
-  }
-
-  async charge(access_token: string): Promise<any> {
-    const url = `${this.baseUrl}/v2/cob`;
-    const headers = this.getBearerHeaders(access_token);
-    
-    const body = {
-      "calendario": {
-        "expiracao": 3600
-      },
-      "devedor": {
-        "cpf": "12345678909",
-        "nome": "Francisco da Silva"
-      },
-      "valor": {
-        "original": "1.00"
-      },
-      "chave": "00677844107",
-      "solicitacaoPagador": "Informe o número ou identificador do pedido."
+  private validateCreatePayload(payload: CreatePixChargeDto): void {
+    if (!Number.isFinite(payload?.amount) || payload.amount <= 0) {
+      throw new BadRequestException('amount deve ser um número maior que zero.');
     }
 
-    const chargeResponse = await this.makePostRequest(url, body, headers, 'Erro ao gerar cobrança');
-    const locId = chargeResponse?.loc?.id;
-
-    if (!locId) {
-      throw new Error('ID do loc não encontrado na resposta da cobrança.');
+    if (!payload?.payerDocument || payload.payerDocument.length > 11) {
+      throw new BadRequestException('payerDocument é obrigatório e deve ter até 11 caracteres.');
     }
-    const qrCodeResponse = await this.generateQRCode(locId.toString(), access_token);
 
-    // Combina os resultados em um único objeto
+    if (!payload?.payerName || payload.payerName.length > 150) {
+      throw new BadRequestException('payerName é obrigatório e deve ter até 150 caracteres.');
+    }
+
+    if (payload.description && payload.description.length > 140) {
+      throw new BadRequestException('description deve ter no máximo 140 caracteres.');
+    }
+  }
+
+  private validateWebhookPayload(payload: PixWebhookDto): void {
+    if (!Array.isArray(payload?.pix)) {
+      throw new BadRequestException('Payload de webhook inválido. Campo pix precisa ser uma lista.');
+    }
+  }
+
+  async createPixCharge(payload: CreatePixChargeDto): Promise<CreatePaymentResponseDto> {
+    this.validateCreatePayload(payload);
+    const txid = randomUUID().replace(/-/g, '').slice(0, 32);
+    const amount = payload.amount.toFixed(2);
+
+    const efiClient = this.getEfiClient();
+
+    const charge = await efiClient.pixCreateImmediateCharge(
+      { txid },
+      {
+        calendario: { expiracao: 3600 },
+        devedor: {
+          cpf: payload.payerDocument,
+          nome: payload.payerName,
+        },
+        valor: { original: amount },
+        chave: '00677844107',
+        solicitacaoPagador:
+          payload.description ?? 'Informe o número ou identificador do pedido.',
+      },
+    );
+
+    const qrCode = await efiClient.pixGenerateQRCode({
+      id: charge.loc?.id,
+    });
+
+    await this.orderRepository.save({
+      txid,
+      amount,
+      payer_document: payload.payerDocument,
+      payer_name: payload.payerName,
+      status: charge.status ?? 'ATIVA',
+      copyAndPaste: qrCode.qrcode,
+      qrcodeImage: qrCode.imagemQrcode
+    });
+
     return {
-      ...chargeResponse,  // Retorna todos os dados da resposta da cobrança
-      qrCode: qrCodeResponse,  // Adiciona o QR Code retornado pela função generateQRCode
+      txid,
+      copyAndPaste: qrCode.qrcode,
+      qrcodeImage: qrCode.imagemQrcode,
     };
   }
 
-  private async generateQRCode(id: string, access_token: string): Promise<any>{
-    const url = `${this.baseUrl}/v2/loc/${id}/qrcode`;
-    const headers = this.getBearerHeaders(access_token);
+  async processWebhook(payload: PixWebhookDto): Promise<{ processed: number }> {
+    this.validateWebhookPayload(payload);
+    let processed = 0;
+
+    for (const pixEvent of payload.pix ?? []) {
+      const normalizedStatus = this.normalizeStatus(pixEvent.status);
+      if (normalizedStatus !== 'CONCLUIDO') {
+        continue;
+      }
+
+      const result = await this.orderRepository.update(
+        { txid: pixEvent.txid },
+        { status: 'CONCLUIDO' },
+      );
+
+      if (result.affected) {
+        processed += result.affected;
+      }
+    }
+
+    return { processed };
+  }
+
+  async getChargeByTxid(txid: string): Promise<Order> {
+    const order = await this.orderRepository.findOne({
+      where: { txid },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Cobrança com txid '${txid}' não encontrada.`);
+    }
+
+    return order;
+  }
+
+  private getEfiClient(): EfiSdkClient {
+    if (!this.efiClient) {
+      this.efiClient = this.buildEfiClient();
+    }
+
+    return this.efiClient;
+  }
+
+  private normalizeStatus(status?: string): string {
+    return (status ?? '').normalize('NFD').replace(/[^\w]/g, '').toUpperCase();
+  }
+
+  private buildEfiClient(): EfiSdkClient {
+    let EfiPay: new (options: Record<string, unknown>) => EfiSdkClient;
 
     try {
-      const response = await firstValueFrom(
-        this.httpService.get(url, { headers }),
+      EfiPay = require('sdk-node-apis-efi');
+    } catch {
+      throw new InternalServerErrorException(
+        'Dependência efi-node-sdk não encontrada. Instale o pacote para habilitar o Pix.',
       );
-      return response.data;
-    } catch (error) {
-      console.error(
-        `Erro ao buscar QR Code para o ID ${id}:`,
-        error.response?.data || error.message,
-      );
-      throw error;
     }
-  }
 
-  private async makePostRequest(
-    url: string,
-    body: any,
-    headers: Record<string, string>,
-    errorMessage: string,
-  ): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(url, body, { headers }),
-      );
-      return response.data;
-    } catch (error) {
-      console.error(errorMessage, error.response?.data || error.message);
-      throw error;
-    }
+    const options = {
+      sandbox: true,
+      client_id: this.configService.getOrThrow<string>('EFI_ACCESS_KEY'),
+      client_secret: this.configService.getOrThrow<string>('EFI_SECRET_KEY'),
+      certificate: path.resolve(process.cwd(), 'certificates', 'homologacao-679036-homolog.p12'),
+      cert_base64: false,
+    };
+
+    return new EfiPay(options) as EfiSdkClient;
   }
 }
