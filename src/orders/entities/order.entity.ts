@@ -25,4 +25,10 @@ export class Order {
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updated_at: Date;
+
+  @Column({ type: 'mediumtext' })
+  qrcodeImage: string;
+
+  @Column({ type: 'varchar', length: 512 })
+  copyAndPaste: string;
 }

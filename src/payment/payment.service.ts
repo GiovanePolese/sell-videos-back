@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,6 +7,7 @@ import { CreatePixChargeDto } from './dto/create-pix-charge.dto';
 import { CreatePaymentResponseDto } from './dto/create-payment-response.dto';
 import { PixWebhookDto } from './dto/pix-webhook.dto';
 import { Order } from '../orders/entities/order.entity';
+import * as path from 'path';
 
 interface EfiSdkClient {
   pixCreateImmediateCharge(params: { txid: string }, body: Record<string, unknown>): Promise<any>;
@@ -63,7 +64,7 @@ export class PaymentService {
           nome: payload.payerName,
         },
         valor: { original: amount },
-        chave: this.configService.getOrThrow<string>('EFI_PIX_KEY'),
+        chave: '00677844107',
         solicitacaoPagador:
           payload.description ?? 'Informe o número ou identificador do pedido.',
       },
@@ -79,12 +80,14 @@ export class PaymentService {
       payer_document: payload.payerDocument,
       payer_name: payload.payerName,
       status: charge.status ?? 'ATIVA',
+      copyAndPaste: qrCode.qrcode,
+      qrcodeImage: qrCode.imagemQrcode
     });
 
     return {
       txid,
       copyAndPaste: qrCode.qrcode,
-      qrcode: qrCode.imagemQrcode,
+      qrcodeImage: qrCode.imagemQrcode,
     };
   }
 
@@ -111,6 +114,18 @@ export class PaymentService {
     return { processed };
   }
 
+  async getChargeByTxid(txid: string): Promise<Order> {
+    const order = await this.orderRepository.findOne({
+      where: { txid },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Cobrança com txid '${txid}' não encontrada.`);
+    }
+
+    return order;
+  }
+
   private getEfiClient(): EfiSdkClient {
     if (!this.efiClient) {
       this.efiClient = this.buildEfiClient();
@@ -127,7 +142,7 @@ export class PaymentService {
     let EfiPay: new (options: Record<string, unknown>) => EfiSdkClient;
 
     try {
-      EfiPay = require('efi-node-sdk');
+      EfiPay = require('sdk-node-apis-efi');
     } catch {
       throw new InternalServerErrorException(
         'Dependência efi-node-sdk não encontrada. Instale o pacote para habilitar o Pix.',
@@ -135,10 +150,11 @@ export class PaymentService {
     }
 
     const options = {
-      sandbox: this.configService.get<string>('EFI_SANDBOX', 'true') === 'true',
-      client_id: this.configService.getOrThrow<string>('EFI_CLIENT_ID'),
-      client_secret: this.configService.getOrThrow<string>('EFI_CLIENT_SECRET'),
-      certificate: this.configService.getOrThrow<string>('EFI_CERTIFICATE_PATH'),
+      sandbox: true,
+      client_id: this.configService.getOrThrow<string>('EFI_ACCESS_KEY'),
+      client_secret: this.configService.getOrThrow<string>('EFI_SECRET_KEY'),
+      certificate: path.resolve(process.cwd(), 'certificates', 'homologacao-679036-homolog.p12'),
+      cert_base64: false,
     };
 
     return new EfiPay(options) as EfiSdkClient;
