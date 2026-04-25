@@ -1,8 +1,17 @@
-import { Body, Controller, HttpCode, Post, Get, Param } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Get, Param, Req, UseGuards } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { CreatePixChargeDto } from './dto/create-pix-charge.dto';
 import { PixWebhookDto } from './dto/pix-webhook.dto';
 import { ApiOperation, ApiTags, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { Request } from 'express';
+
+interface AuthenticatedRequest extends Request {
+  user: {
+    userId: number;
+    username: string;
+  };
+}
 
 @ApiTags('Payments') // Organiza estas rotas na pasta "Payments" no Postman
 @Controller('payment')
@@ -10,11 +19,15 @@ export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   @Post('pix')
-  @ApiBearerAuth('access-token') // Indica que esta rota exige o Token JWT
+  @UseGuards(JwtAuthGuard) // Protege a rota e injeta o req.user
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Cria uma cobrança PIX para venda de vídeo' })
-  @ApiResponse({ status: 201, description: 'Cobrança criada com sucesso.' })
-  createPixCharge(@Body() payload: CreatePixChargeDto) {
-    return this.paymentService.createPixCharge(payload);
+  createPixCharge(@Body() payload: CreatePixChargeDto, @Req() req: AuthenticatedRequest) {
+    
+    const user = req.user as any; 
+    const idDoUsuarioLogado = user.userId; 
+
+    return this.paymentService.createPixCharge(payload, idDoUsuarioLogado);
   }
 
   @Get('pix/:txid')

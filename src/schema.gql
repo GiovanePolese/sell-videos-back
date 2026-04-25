@@ -8,15 +8,39 @@ input CreateUserInput {
   password: String!
 }
 
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
 type Mutation {
   createUser(input: CreateUserInput!): Users!
 }
 
+type Order {
+  amount: String!
+  copyAndPaste: String!
+  created_at: DateTime!
+  id: Int!
+  payer_document: String
+  payer_name: String
+  qrcodeImage: String!
+  status: String!
+  txid: String!
+  updated_at: DateTime!
+  user: Users!
+}
+
 type Query {
+  """
+  Retorna a lista de pedidos do usuário autenticado, ordenados do mais recente para o mais antigo.
+  """
+  meusPedidos: [Order!]!
   userByUsername(username: String!): Users
 }
 
 type Users {
   id: Int!
   name: String!
+  orders: [Order!]
 }

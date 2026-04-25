@@ -1,13 +1,11 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { CreatePixChargeDto } from './dto/create-pix-charge.dto';
 import { CreatePaymentResponseDto } from './dto/create-payment-response.dto';
 import { PixWebhookDto } from './dto/pix-webhook.dto';
-import { Order } from '../orders/entities/order.entity';
 import * as path from 'path';
+import { OrderService } from '../orders/order.service';
 
 interface EfiSdkClient {
   pixCreateImmediateCharge(params: { txid: string }, body: Record<string, unknown>): Promise<any>;
@@ -20,8 +18,7 @@ export class PaymentService {
 
   constructor(
     private readonly configService: ConfigService,
-    @InjectRepository(Order)
-    private readonly orderRepository: Repository<Order>,
+    private readonly orderService: OrderService,
   ) {}
 
   private validateCreatePayload(payload: CreatePixChargeDto): void {
@@ -48,7 +45,7 @@ export class PaymentService {
     }
   }
 
-  async createPixCharge(payload: CreatePixChargeDto): Promise<CreatePaymentResponseDto> {
+  async createPixCharge(payload: CreatePixChargeDto, userId: number): Promise<CreatePaymentResponseDto> {
     this.validateCreatePayload(payload);
     const txid = randomUUID().replace(/-/g, '').slice(0, 32);
     const amount = payload.amount.toFixed(2);
@@ -69,26 +66,20 @@ export class PaymentService {
           payload.description ?? 'Informe o número ou identificador do pedido.',
       },
     );
+    const qrCode = await efiClient.pixGenerateQRCode({ id: charge.loc?.id });
 
-    const qrCode = await efiClient.pixGenerateQRCode({
-      id: charge.loc?.id,
-    });
-
-    await this.orderRepository.save({
+    await this.orderService.createOrder({
       txid,
       amount,
       payer_document: payload.payerDocument,
       payer_name: payload.payerName,
       status: charge.status ?? 'ATIVA',
       copyAndPaste: qrCode.qrcode,
-      qrcodeImage: qrCode.imagemQrcode
+      qrcodeImage: qrCode.imagemQrcode,
+      user: { id: userId } as any,
     });
 
-    return {
-      txid,
-      copyAndPaste: qrCode.qrcode,
-      qrcodeImage: qrCode.imagemQrcode,
-    };
+    return { txid, copyAndPaste: qrCode.qrcode, qrcodeImage: qrCode.imagemQrcode };
   }
 
   async processWebhook(payload: PixWebhookDto): Promise<{ processed: number }> {
@@ -97,14 +88,9 @@ export class PaymentService {
 
     for (const pixEvent of payload.pix ?? []) {
       const normalizedStatus = this.normalizeStatus(pixEvent.status);
-      if (normalizedStatus !== 'CONCLUIDO') {
-        continue;
-      }
+      if (normalizedStatus !== 'CONCLUIDO') continue;
 
-      const result = await this.orderRepository.update(
-        { txid: pixEvent.txid },
-        { status: 'CONCLUIDO' },
-      );
+      const result = await this.orderService.updateStatus(pixEvent.txid, 'CONCLUIDO');
 
       if (result.affected) {
         processed += result.affected;
@@ -114,16 +100,8 @@ export class PaymentService {
     return { processed };
   }
 
-  async getChargeByTxid(txid: string): Promise<Order> {
-    const order = await this.orderRepository.findOne({
-      where: { txid },
-    });
-
-    if (!order) {
-      throw new NotFoundException(`Cobrança com txid '${txid}' não encontrada.`);
-    }
-
-    return order;
+  async getChargeByTxid(txid: string) {
+    return this.orderService.findByTxid(txid);
   }
 
   private getEfiClient(): EfiSdkClient {
