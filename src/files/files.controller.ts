@@ -1,32 +1,31 @@
-import { Body, Controller, FileTypeValidator, Get, MaxFileSizeValidator, Param, ParseFilePipe, Post, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseFilePipe, Post, Query, Request, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('files')
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
   @Post('upload')
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FilesInterceptor('files', 10))
   async uploadFiles(
     @UploadedFiles(
       new ParseFilePipe({
-        validators: [
-          // new MaxFileSizeValidator({ maxSize: 1000 }),
-          // new FileTypeValidator({ fileType: 'image/jpeg' }),
-        ],
+        validators: [],
       }),
-    ) 
+    )
     files: Express.Multer.File[],
+    @Body('album') album: string,
+    @Request() req,
   ) {
+    const userId = req.user.userId;
     const responses = [];
 
     for (const file of files) {
-      // Upload do arquivo para o S3
       const { url, fileName } = await this.filesService.upload(file.originalname, file.buffer);
-
-      // Salvar no banco de dados
-      const upload = await this.filesService.saveToDatabase(fileName, url);
+      const upload = await this.filesService.saveToDatabase(fileName, url, userId, album);
 
       responses.push({
         fileName: file.originalname,
@@ -47,7 +46,17 @@ export class FilesController {
   }
 
   @Get('user/:fkUser/active')
-  async getActiveImages(@Param('fkUser') fkUser: number) {
-    return this.filesService.getActiveImagesByUser(fkUser);
+  async getActiveImages(
+    @Param('fkUser') fkUser: number,
+    @Query('album') album?: string,
+  ) {
+    return this.filesService.getActiveImagesByUser(fkUser, album);
+  }
+
+  @Get('albums')
+  @UseGuards(JwtAuthGuard)
+  async getUserAlbums(@Request() req) {
+    const userId = req.user.userId;
+    return this.filesService.getAlbumsByUser(userId);
   }
 }

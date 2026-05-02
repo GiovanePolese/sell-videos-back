@@ -152,11 +152,12 @@ export class FilesService {
     };
   }
 
-  async saveToDatabase(filename: string, url: string): Promise<FilesEntity|string> {
+  async saveToDatabase(filename: string, url: string, userId: number, album: string): Promise<FilesEntity|string> {
     const newUpload = this.uploadRepository.create({
-      fk_users: 1,
+      fk_users: userId,
       image_name: filename,
       image_url: url,
+      album,
       date: new Date(),
       status: true,
     });
@@ -201,18 +202,33 @@ export class FilesService {
     return upload ? upload.image_name : null;
   }
 
-  async getActiveImagesByUser(fkUser: number): Promise<FilesEntity[]> {
-    console.log(this.uploadRepository.find({
-      where: {
-        fk_users: fkUser,
-        status: true,
-      },
-    }))
-    return this.uploadRepository.find({
-      where: {
-        fk_users: fkUser,
-        status: true,
-      },
-    });
+  async getActiveImagesByUser(fkUser: number, album?: string): Promise<FilesEntity[]> {
+    const where: any = {
+      fk_users: fkUser,
+      status: true,
+    };
+    if (album) {
+      where.album = album;
+    }
+    return this.uploadRepository.find({ where });
+  }
+
+  async getAlbumsByUser(userId: number): Promise<{ album: string; count: number; latestDate: string }[]> {
+    const results = await this.uploadRepository
+      .createQueryBuilder('file')
+      .select('file.album', 'album')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('MAX(file.date)', 'latestDate')
+      .where('file.fk_users = :userId', { userId })
+      .andWhere('file.status = :status', { status: true })
+      .groupBy('file.album')
+      .orderBy('latestDate', 'DESC')
+      .getRawMany();
+
+    return results.map((r) => ({
+      album: r.album,
+      count: Number(r.count),
+      latestDate: r.latestDate,
+    }));
   }
 }

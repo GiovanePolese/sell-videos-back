@@ -14,6 +14,9 @@ export class Files {
   @Column()
   image_url: string;
 
+  @Column()
+  album: string;
+
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   date: Date;
 
