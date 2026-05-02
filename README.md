@@ -1,99 +1,104 @@
+<h1 align="center">
+  📹 Sell Videos - Marketplace para Videomakers (Backend)
+</h1>
+
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  Uma API robusta, escalável e segura construída para dar suporte ao marketplace de criadores de conteúdo e videomakers.
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+<p align="center">
+  <a href="https://nestjs.com/" target="_blank"><img src="https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS"></a>
+  <a href="https://www.typescriptlang.org/" target="_blank"><img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"></a>
+  <a href="https://graphql.org/" target="_blank"><img src="https://img.shields.io/badge/GraphQL-E10098?style=for-the-badge&logo=graphql&logoColor=white" alt="GraphQL"></a>
+  <a href="https://www.mysql.com/" target="_blank"><img src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL"></a>
+  <a href="https://aws.amazon.com/s3/" target="_blank"><img src="https://img.shields.io/badge/AWS_S3-569A31?style=for-the-badge&logo=amazon-s3&logoColor=white" alt="AWS S3"></a>
 </p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 📖 Sobre o Projeto
 
-## Project setup
+O backend do **Sell Videos** é responsável por toda a regra de negócio que sustenta o marketplace. Ele gerencia a autenticação de usuários e criadores, o processamento de arquivos de mídia, a integração com gateways de pagamento e a entrega segura de dados para o frontend.
 
-```bash
-$ npm install
-```
+O sistema foi arquitetado utilizando **NestJS** e conta com uma abordagem híbrida de comunicação, fornecendo tanto endpoints **GraphQL** (para consultas complexas na interface) quanto **RESTful** (para webhooks e integrações externas).
 
-## Compile and run the project
+### 🚀 Principais Funcionalidades
 
-```bash
-# development
-$ npm run start
+* **Processamento de Vídeo:** Integração com `FFmpeg` nativo para manipulação, compressão ou extração de thumbnails de vídeos.
+* **Armazenamento em Nuvem:** Upload e gerenciamento seguro de mídias no **AWS S3**.
+* **Gestão de Pagamentos:** Integração com a API da **Efí Pay** (`sdk-node-apis-efi`) para processamento de vendas e split de pagamentos.
+* **Segurança e Autenticação:** Sistema robusto utilizando **JWT**, **Passport**, **Bcrypt** para senhas e **Throttler** para prevenção de ataques de força bruta.
+* **API Híbrida:** Integração com **Apollo GraphQL** para o painel principal e documentação **Swagger** para endpoints REST.
 
-# watch mode
-$ npm run start:dev
 
-# production mode
-$ npm run start:prod
-```
+## 🛠️ Tecnologias e Ferramentas
 
-## Run tests
+* **Core:** [NestJS](https://nestjs.com/) (Node.js framework) + [TypeScript](https://www.typescriptlang.org/)
+* **Banco de Dados:** [MySQL](https://www.mysql.com/) com [TypeORM](https://typeorm.io/)
+* **APIs:** [GraphQL](https://graphql.org/) (Apollo) e REST (com [Swagger](https://swagger.io/))
+* **Mídia & Cloud:** [AWS SDK (S3)](https://aws.amazon.com/sdk-for-javascript/) e [FFmpeg](https://ffmpeg.org/) (`fluent-ffmpeg`)
+* **Segurança:** `@nestjs/jwt`, `passport`, `bcrypt`, `@nestjs/throttler`
+* **Testes:** [Jest](https://jestjs.io/) e Supertest
 
-```bash
-# unit tests
-$ npm run test
 
-# e2e tests
-$ npm run test:e2e
+## ⚙️ Como executar o projeto localmente
 
-# test coverage
-$ npm run test:cov
-```
+### Pré-requisitos
 
-## Deployment
+* [Node.js](https://nodejs.org/) (versão 18+)
+* Banco de dados **MySQL** rodando localmente ou via Docker
+* Credenciais da **AWS (S3)** e da **Efí Pay** (para testar fluxos completos)
+* Instalação do **FFmpeg** no sistema operacional (embora o projeto utilize pacotes de instalação estática/automática do FFmpeg, recomenda-se ter o core instalado na máquina).
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Instalação
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+1. Clone o repositório:
+   ```bash
+   git clone https://github.com/GiovanePolese/sell-event-videos-backend.git
+   cd sell-event-videos-backend
+2. Instale as dependências:
+    ```bash
+    npm install
+3. Configure as variáveis de ambiente:
+Crie um arquivo .env na raiz do projeto baseado em um possível .env.example ou contendo as seguintes chaves essenciais:
+    ```bash
+    # Banco de Dados
+    DB_HOST=localhost
+    DB_PORT=3306
+    DB_USER=root
+    DB_PASS=sua_senha
+    DB_NAME=sell_videos
 
-```bash
-$ npm install -g mau
-$ mau deploy
-```
+    # Autenticação
+    JWT_SECRET=seu_segredo_super_seguro
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+    # AWS S3
+    AWS_REGION=sua-regiao
+    AWS_ACCESS_KEY_ID=sua-access-key
+    AWS_SECRET_ACCESS_KEY=sua-secret-key
+    AWS_BUCKET_NAME=nome-do-bucket
 
-## Resources
+    # Gateway de Pagamento (Efí)
+    EFI_CLIENT_ID=seu_client_id
+    EFI_CLIENT_SECRET=seu_client_secret
+4. Inicie o servidor em modo de desenvolvimento:
+    ```bash
+    npm run start:dev
+💡 O servidor estará rodando por padrão em http://localhost:3000.
+📚 A documentação interativa do Swagger (REST) geralmente estará acessível em `/api` ou `/docs` e o Playground do GraphQL em `/graphql` (dependendo da configuração do seu `main.ts`).
 
-Check out a few resources that may come in handy when working with NestJS:
+## 📜 Scripts Disponíveis
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+| Comando | Descrição |
+| :--- | :--- |
+|npm run start:dev | Inicia a aplicação em modo de desenvolvimento com hot-reload.|
+|npm run build | Compila o código TypeScript para a pasta dist gerando o build de produção.|
+|npm run start:prod | Executa a versão compilada em produção.|
+|npm run lint | Executa o ESLint para encontrar e corrigir problemas no código.|
+|npm run format | Formata o código utilizando o Prettier.|
+|npm run test | Executa a suíte de testes unitários com Jest.|
+|npm run test:e2e | Executa os testes end-to-end (E2E).|
+|npm run test:cov |Gera o relatório de cobertura de testes.|
 
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## 🛡️ Licença
+Este projeto é classificado como [UNLICENSED](https://choosealicense.com/no-permission/) e é de uso privado e exclusivo.

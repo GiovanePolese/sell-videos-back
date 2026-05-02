@@ -40,6 +40,7 @@ type Query {
 }
 
 type Users {
+  dica_senha: String!
   id: Int!
   name: String!
   orders: [Order!]

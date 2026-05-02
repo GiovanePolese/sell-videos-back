@@ -1,7 +1,5 @@
 import { UseGuards } from '@nestjs/common';
 import { Resolver, Query, Context } from '@nestjs/graphql';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Order } from '../entities/order.entity';
 import { OrderService } from '../order.service';
 import { GqlAuthGuard } from '../../auth/gql-auth.guard';

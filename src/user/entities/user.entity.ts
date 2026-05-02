@@ -16,6 +16,7 @@ export class Users {
   @Column()
   password: string;
 
+  @Field()
   @Column()
   dica_senha: string;
 
