@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseFilePipe, Post, Query, Request, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseFilePipe, Post, Request, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -17,40 +17,34 @@ export class FilesController {
       }),
     )
     files: Express.Multer.File[],
-    @Body('album') album: string,
+    @Body('album') albumTitle: string,
     @Request() req,
   ) {
     const userId = req.user.userId;
+    const album = await this.filesService.findOrCreateAlbum(albumTitle, userId);
     const responses = [];
 
     for (const file of files) {
-      const { url, fileName } = await this.filesService.upload(file.originalname, file.buffer);
-      const upload = await this.filesService.saveToDatabase(fileName, url, userId, album);
+      const { url, fileName } = await this.filesService.uploadFile(file.originalname, file.buffer);
+      const video = await this.filesService.saveVideoToDatabase(fileName, url, album.id);
 
       responses.push({
         fileName: file.originalname,
         url,
-        data: upload,
+        data: video,
       });
     }
 
     return {
       message: 'Uploads realizados com sucesso',
+      album,
       uploads: responses,
     };
   }
 
   @Post('delete')
-  async deleteFile(@Body('imageId') imageId: number) {
-    await this.filesService.deleteFile(imageId);
-  }
-
-  @Get('user/:fkUser/active')
-  async getActiveImages(
-    @Param('fkUser') fkUser: number,
-    @Query('album') album?: string,
-  ) {
-    return this.filesService.getActiveImagesByUser(fkUser, album);
+  async deleteVideo(@Body('videoId') videoId: string) {
+    await this.filesService.deleteVideo(videoId);
   }
 
   @Get('albums')
@@ -58,5 +52,15 @@ export class FilesController {
   async getUserAlbums(@Request() req) {
     const userId = req.user.userId;
     return this.filesService.getAlbumsByUser(userId);
+  }
+
+  @Get('albums/:slug')
+  async getAlbumBySlug(@Param('slug') slug: string) {
+    return this.filesService.getAlbumBySlug(slug);
+  }
+
+  @Get('albums/:albumId/videos')
+  async getVideosByAlbum(@Param('albumId') albumId: string) {
+    return this.filesService.getVideosByAlbum(albumId);
   }
 }

@@ -5,12 +5,13 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Files as FilesEntity } from './entities/files.entity';
+import { Album } from './entities/album.entity';
+import { VideoFile } from './entities/video-file.entity';
 import { GraphqlThrottlerGuard } from '../common/guards/graphql-throttler.guard';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([FilesEntity]),
+    TypeOrmModule.forFeature([Album, VideoFile]),
     ThrottlerModule.forRootAsync({
       useFactory: (configService: ConfigService) => ([{
         ttl: configService.getOrThrow('UPLOAD_RATE_TTL'),
